@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Stream Transcription</title>
+</head>
+<body>
+    <h1>Audio Stream Transcription</h1>
+    <button id="startButton">Start Aufnahme</button>
+    <button id="stopButton">Stopp Aufnahme</button>
+    <p>Status: <span id="status">Inaktiv</span></p>
+    <h2>Transkription</h2>
+    <div id="transcription"></div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusSpan = document.getElementById('status');
+        const transcriptionDiv = document.getElementById('transcription');
+
+        let mediaRecorder;
+        let audioStream;
+
+        startButton.onclick = async () => {
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                mediaRecorder = new MediaRecorder(audioStream);
+
+                mediaRecorder.ondataavailable = async (event) => {
+                    const data = event.data;
+                    await sendAudioToTranscribe(data);
+                };
+
+                mediaRecorder.start(1000); // Sendet Daten alle 1000ms
+                statusSpan.textContent = 'Aufnahme läuft...';
+            } catch (error) {
+                console.error('Fehler beim Zugriff auf das Mikrofon: ', error);
+            }
+        };
+
+        stopButton.onclick = () => {
+            mediaRecorder.stop();
+            audioStream.getTracks().forEach(track => track.stop());
+            statusSpan.textContent = 'Inaktiv';
+        };
+
+        async function sendAudioToTranscribe(data) {
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const arrayBuffer = reader.result;
+                const response = await fetch('https://transcribestreaming.region.amazonaws.com/stream-transcription', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Generated value', // Hier müssen Sie den authentischen Wert einsetzen
+                        'Content-Type': 'application/vnd.amazon.eventstream',
+                        'X-Amz-Target': 'com.amazonaws.transcribe.Transcribe.StartStreamTranscription',
+                        'X-Amz-Content-Sha256': 'STREAMING-AWS4-HMAC-SHA256-EVENTS',
+                        'X-Amz-Date': new Date().toISOString(),
+                        'X-Amz-Transcribe-Language-Code': 'en-US',
+                        'X-Amz-Transcribe-Sample-Rate': '16000',
+                        'Transfer-Encoding': 'chunked'
+                    },
+                    body: arrayBuffer
+                });
+
+                if (response.ok) {
+                    const transcriptionResponse = await response.json();
+                    transcriptionDiv.textContent += transcriptionResponse.Transcript + ' ';
+                } else {
+                    console.error('Fehler bei der Übertragung: ', response.statusText);
+                }
+            };
+            reader.readAsArrayBuffer(data);
+        }
+    </script>
+</body>
+</html>
