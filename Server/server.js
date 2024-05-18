@@ -1,11 +1,6 @@
 const AWS = require('aws-sdk');
-const express = require('express');
-const bodyParser = require('body-parser');
-const multer = require('multer');
+const transcribeStreaming = require('aws-transcribe-streaming');
 
-const upload = multer();
-const app = express();
-app.use(bodyParser.json());
 
 // AWS Konfiguration
 AWS.config.update({
@@ -14,31 +9,59 @@ AWS.config.update({
     region: 'eu-north-1' // example region
   });
 
-const transcribeService = new AWS.TranscribeService();
+  const transcribeService = new AWS.TranscribeService();
 
-app.post('/transcribe', upload.single('audio'), (req, res) => {
-  const params = {
-    LanguageCode: 'en-US',             // Oder andere unterstützte Sprache
-    Media: {
-      MediaFileUri: req.file.buffer    // Hier der Buffer des Audio-Streams
-    },
-    MediaFormat: 'mp3',                // Oder das Format Ihrer Audio-Datei
-    TranscriptionJobName: 'Transkribierung' + Date.now()  // Eindeutiger Name des Transkriptionsjobs
-  };
-
-  transcribeService.startTranscriptionJob(params, (err, data) => {
-    if (err) {
-      console.log(err, err.stack);
-      res.status(500).send(err);
-    } else {
-      res.send(data);
-    }
-  });
-});
-
-const port = 3000;
-app.listen(port, () => {
-  console.log(`Server läuft auf http://localhost:${port}`);
-});
-
-
+  // Create an Express server
+  const express = require('express');
+  const app = express();
+  
+  // Use the `express.raw` middleware to get the audio data as a Buffer
+  app.use(express.raw({ type: 'audio/*' }));
+  
+  app.post('/transcribe', async (req, res) => {
+    // Set up the transcription request
+    const params = {
+      LanguageCode: 'en-US', // or another language code
+      MediaSampleRateHertz: 16000, // or another sample rate
+      MediaEncoding: 'pcm', // or another encoding
+      AudioStream: req.body // the raw audio data
+    };
+  
+    try {
+      // Start the transcription
+      const transcription = await transcribeService.startStreamTranscription(params).promise();
+  
+      // Set up a variable to hold the transcription text
+      let transcriptionText = '';
+  
+      // Handle the transcription data
+      transcription.TranscriptResultStream.on('data', (event) => {
+        if (event.TranscriptEvent) {
+          const results = event.TranscriptEvent.Transcript.Results;
+          if (results.length > 0) {
+            if (results[0].Alternatives.length > 0) {
+              transcriptionText += results[0].Alternatives[0].Transcript + ' ';
+            }
+          }
+        }
+      });
+  
+      // Handle the end of the transcription
+      transcription.TranscriptResultStream.on('end', () => {
+        res.send(transcriptionText);
+      });
+  
+      // Handle errors
+      transcription.TranscriptResultStream.on('error', (err) => {
+        console.error(err);
+        res.status(500).send(err.toString());
+      });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send(err.toString());
+      }
+    });
+    
+    app.listen(3000, () => {
+      console.log('Server started on port 3000');
+    });
