@@ -9,16 +9,16 @@ AWS.config.update({
     region: 'eu-north-1' // example region
   });
 
-  const transcribeService = new AWS.TranscribeService();
+const transcribeService = new AWS.TranscribeService();
 
-  // Create an Express server
-  const express = require('express');
-  const app = express();
+// Create an Express server
+const express = require('express');
+const app = express();
   
   // Use the `express.raw` middleware to get the audio data as a Buffer
-  app.use(express.raw({ type: 'audio/*' }));
+app.use(express.raw({ type: 'audio/*' }));
   
-  app.post('/transcribe', async (req, res) => {
+app.post('/transcribe', async (req, res) => {
     // Set up the transcription request
     const params = {
       LanguageCode: 'en-US', // or another language code
@@ -60,8 +60,8 @@ AWS.config.update({
         console.error(err);
         res.status(500).send(err.toString());
       }
-    });
+});
     
-    app.listen(3000, () => {
+app.listen(3000, () => {
       console.log('Server started on port 3000');
-    });
+});
