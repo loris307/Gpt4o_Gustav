@@ -1,57 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription with Whisper API</title>
+</head>
 <body>
+    <h1>Audio Transcription with Whisper API</h1>
+    <button id="recordButton">Record</button>
+    <p id="transcription">Transcribed text will appear here...</p>
 
-<h2>Audio Transcription</h2>
+    <script>
+        // Check for microphone access
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Your browser does not support audio recording.');
+            throw new Error('Your browser does not support audio recording.');
+        }
 
-<button id="start">Start Recording</button>
-<button id="stop" disabled>Stop Recording</button>
+        const recordButton = document.getElementById('recordButton');
+        const transcriptionParagraph = document.getElementById('transcription');
 
-<p id="transcription"></p>
+        let mediaRecorder;
+        let audioChunks = [];
 
-<script>
-let mediaRecorder;
-let audioChunks = [];
+        recordButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordButton.textContent = 'Record';
+            } else {
+                startRecording();
+                recordButton.textContent = 'Stop';
+            }
+        });
 
-const startButton = document.getElementById('start');
-const stopButton = document.getElementById('stop');
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        audioChunks = [];
+                        transcribeAudio(audioBlob);
+                    };
+                    mediaRecorder.start();
+                })
+                .catch(error => {
+                    console.error('Error accessing the microphone', error);
+                    alert('Error accessing the microphone');
+                });
+        }
 
-startButton.addEventListener('click', function() {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.start();
+        function transcribeAudio(audioBlob) {
+            const formData = new FormData();
+            formData.append('file', audioBlob);
+            formData.append('model', 'whisper-1');
 
-      mediaRecorder.addEventListener('dataavailable', function(event) {
-        audioChunks.push(event.data);
-      });
-
-      stopButton.disabled = false;
-    })
-    .catch(error => console.error('Error:', error));
-});
-
-stopButton.addEventListener('click', function() {
-  mediaRecorder.stop();
-
-  const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-  const formData = new FormData();
-  formData.append('audio', audioBlob);
-
-  fetch('http://localhost:3000/transcribe', {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.text())
-  .then(data => {
-    document.getElementById('transcription').textContent = data;
-  })
-  .catch(error => console.error('Error:', error));
-
-  stopButton.disabled = true;
-  audioChunks = [];
-});
-</script>
-
+            fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer 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'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.text) {
+                    transcriptionParagraph.textContent = data.text;
+                } else {
+                    transcriptionParagraph.textContent = 'Transcription failed. Please try again.';
+                }
+            })
+            .catch(error => {
+                console.error('Error during transcription', error);
+                transcriptionParagraph.textContent = 'Error during transcription. Please try again.';
+            });
+        }
+    </script>
 </body>
 </html>
