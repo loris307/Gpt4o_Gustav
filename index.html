@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Transcription with Whisper API</title>
+    <title>Audio Transcription and GPT-4 Response</title>
 </head>
 <body>
-    <h1>Audio Transcription with Whisper API</h1>
+    <h1>Audio Transcription and GPT-4 Response</h1>
     <button id="recordButton">Record</button>
     <p id="transcription">Transcribed text will appear here...</p>
+    <p id="gptResponse">GPT-4 response will appear here...</p>
 
     <script>
+
+        let API_KEY = 'sk-...';
+
         // Check for microphone access
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             alert('Your browser does not support audio recording.');
@@ -19,6 +23,7 @@
 
         const recordButton = document.getElementById('recordButton');
         const transcriptionParagraph = document.getElementById('transcription');
+        const gptResponseParagraph = document.getElementById('gptResponse');
 
         let mediaRecorder;
         let audioChunks = [];
@@ -61,7 +66,7 @@
             fetch('https://api.openai.com/v1/audio/transcriptions', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer YOUR_API_KEY'
+                    'Authorization': `Bearer ${API_KEY}`
                 },
                 body: formData
             })
@@ -69,6 +74,7 @@
             .then(data => {
                 if (data.text) {
                     transcriptionParagraph.textContent = data.text;
+                    sendToGPT(data.text);
                 } else {
                     transcriptionParagraph.textContent = 'Transcription failed. Please try again.';
                 }
@@ -78,6 +84,46 @@
                 transcriptionParagraph.textContent = 'Error during transcription. Please try again.';
             });
         }
+
+        var messages = [
+            {"role": "system", "content": "Du bist ein guter Freund."},
+        ];
+
+        function sendToGPT(transcribedText) {
+
+            messages.push({"role": "user", "content": transcribedText});
+            console.log(messages); //----------------
+
+            fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o', 
+                messages: messages,
+                max_tokens: 150
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.choices && data.choices.length > 0) {
+                // Append the assistant's response to the list
+                messages.push({"role": "assistant", "content": data.choices[0].message.content});
+                console.log(messages); //------------
+                gptResponseParagraph.textContent = data.choices[0].message.content;
+            } else {
+                gptResponseParagraph.textContent = 'GPT-4 response failed. Please try again.';
+            }
+        })
+        .catch(error => {
+            console.error('Error during GPT-4 request', error);
+            gptResponseParagraph.textContent = 'Error during GPT-4 request. Please try again.';
+        });
+}
     </script>
 </body>
 </html>
+
+
