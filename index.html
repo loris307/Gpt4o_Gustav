@@ -15,8 +15,8 @@
     <script>
 
         let API_KEY = '...';
+        
 
-        // Check for microphone access
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             alert('Your browser does not support audio recording.');
             throw new Error('Your browser does not support audio recording.');
@@ -93,7 +93,6 @@
         function sendToGPT(transcribedText) {
 
             messages.push({"role": "user", "content": transcribedText});
-            console.log(messages); //----------------
 
             fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -111,7 +110,6 @@
         .then(data => {
             if (data.choices && data.choices.length > 0) {
                 messages.push({"role": "assistant", "content": data.choices[0].message.content});
-                console.log(messages); //------------
                 const gptText = data.choices[0].message.content;
                 gptResponseParagraph.textContent = gptText;
                 generateSpeech(gptText);
@@ -149,6 +147,10 @@
                 alert('Error during TTS request. Please try again.');
             });
         }
+
+        document.getElementById('audioPlayback').addEventListener('ended', function() {
+            document.getElementById('recordButton').click();
+        });
     </script>
 </body>
 </html>
