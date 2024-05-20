@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "@aws-sdk/client-transcribe-streaming": "^3.577.0",
-    "aws-sdk": "^2.1623.0",
-    "express": "^4.19.2"
-  }
-}
