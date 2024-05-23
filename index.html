@@ -17,7 +17,7 @@
 
     <script>
 
-        let API_KEY = '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';
+        let API_KEY = '...';
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             alert('Your browser does not support audio recording.');
@@ -132,7 +132,8 @@
         }
 
         var messages = [
-            {"role": "system", "content": "Du bist ein chilliger Freund, so ca 23 Jahre alt und kiffst gerne. Du antwortest immer kurz und knapp."},
+            {"role": "system", "content": "Du bist ein chilliger Freund, so ca 23 Jahre alt und kiffst gerne."+ 
+                "Du antwortest immer kurz und knapp und redest ständig über Gras rauchen. Dein Name ist Gustav!"},
         ];
 
         function sendToGPT(transcribedText) {
